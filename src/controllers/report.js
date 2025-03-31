@@ -1,12 +1,19 @@
 const sql = require("mssql");
-const { connectToDB } = require("../../configs/connect-db");
-const { dbMSConfig } = require("../../configs/db");
+const { connectToDB } = require("../configs/connect-db");
+const { dbMSConfig, dbEUConfig, dbNAConfig} = require("../configs/db");
 
 async function getTopProducts(year) {
   let pool;
-  try {
+  if (server === "na") {
+    pool = await connectToDB(dbNAConfig);
+  }
+  if (server === "eu") {
+    pool = await connectToDB(dbEUConfig);
+  }
+  if (server === "ms") {
     pool = await connectToDB(dbMSConfig);
-
+  }
+  try {
     let query = `
           SELECT TOP 10 
             p.Name AS ProductName,
