@@ -3,6 +3,7 @@ const {
   getTopProducts,
   totalSalesBySubcategory,
   totalSalesByYear,
+  totalSalesByCityCategory,
 } = require("../controllers/report");
 const { dbMSConfig } = require("../configs/db");
 
@@ -68,6 +69,28 @@ const ReportRoutes = () => {
   router.get("/eu/total-sales-by-year", (req, res) => {
     const year = req.query.year;
     totalSalesByYear(year, "eu")
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ error: error.message }));
+  });
+
+  router.get("/ms/total-sales-by-city-category", (req, res) => {
+    const year = req.query.year;
+    totalSalesByCityCategory(year, "ms", dbMSConfig.server, 1433)
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ error: error.message }));
+  });
+
+  router.get("/na/total-sales-by-city-category", (req, res) => {
+    const year = req.query.year;
+    totalSalesByCityCategory(year, "na", dbMSConfig.server, 1433)
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ error: error.message }));
+  });
+
+  router.get("/eu/total-sales-by-city-category", (req, res) => {
+    const year = req.query.year;
+    console.log(process.env.DB_MS_SERVER);
+    totalSalesByCityCategory(year, "eu", dbMSConfig.server, 1433)
       .then((data) => res.json(data))
       .catch((error) => res.status(500).json({ error: error.message }));
   });
