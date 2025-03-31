@@ -2,7 +2,7 @@ const sql = require("mssql");
 const { connectToDB } = require("../configs/connect-db");
 const { dbMSConfig, dbEUConfig, dbNAConfig } = require("../configs/db");
 
-async function getTopProducts(year) {
+async function getTopProducts(year, server) {
   let pool;
   if (server === "na") {
     pool = await connectToDB(dbNAConfig);
@@ -123,4 +123,39 @@ async function totalSalesBySubcategory(
   }
 }
 
-module.exports = { getTopProducts, totalSalesBySubcategory };
+async function totalSalesByYear(year, server) {
+  let pool;
+  if (server === "na") {
+    pool = await connectToDB(dbNAConfig);
+  }
+  if (server === "eu") {
+    pool = await connectToDB(dbEUConfig);
+  }
+  if (server === "ms") {
+    pool = await connectToDB(dbMSConfig);
+  }
+  try {
+    const query = `
+      SELECT SUM(TotalDue) AS TotalSales
+      FROM Sales.SalesOrderHeader
+      ${year ? "WHERE YEAR(OrderDate) = @year" : ""};
+    `;
+
+    const result = await pool
+      .request()
+      .input("year", sql.Int, year ? parseInt(year) : null)
+      .query(query);
+
+    return {
+      Year: year,
+      TotalSales: result.recordset[0]?.TotalSales || 0,
+    };
+  } catch (error) {
+    console.error("Lỗi truy vấn dữ liệu:", error);
+    throw new Error("Lỗi truy vấn dữ liệu");
+  } finally {
+    await sql.close();
+  }
+}
+
+module.exports = { getTopProducts, totalSalesBySubcategory, totalSalesByYear };

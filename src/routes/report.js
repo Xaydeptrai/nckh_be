@@ -2,6 +2,7 @@ const express = require("express");
 const {
   getTopProducts,
   totalSalesBySubcategory,
+  totalSalesByYear,
 } = require("../controllers/report");
 const { dbMSConfig } = require("../configs/db");
 
@@ -46,6 +47,27 @@ const ReportRoutes = () => {
   router.get("/eu/total-sales-by-subcategory", (req, res) => {
     const year = req.query.year;
     totalSalesBySubcategory(year, "eu", dbMSConfig.server, 1433)
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ error: error.message }));
+  });
+
+  router.get("/ms/total-sales-by-year", (req, res) => {
+    const year = req.query.year;
+    totalSalesByYear(year, "ms")
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ error: error.message }));
+  });
+
+  router.get("/na/total-sales-by-year", (req, res) => {
+    const year = req.query.year;
+    totalSalesByYear(year, "na")
+      .then((data) => res.json(data))
+      .catch((error) => res.status(500).json({ error: error.message }));
+  });
+
+  router.get("/eu/total-sales-by-year", (req, res) => {
+    const year = req.query.year;
+    totalSalesByYear(year, "eu")
       .then((data) => res.json(data))
       .catch((error) => res.status(500).json({ error: error.message }));
   });
