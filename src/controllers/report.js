@@ -146,45 +146,97 @@ async function totalSalesBySubcategory(
 
 async function totalSalesByYear(year, server) {
   let pool;
-  if (server === "na") {
-    pool = await connectToDB(dbNAConfig);
+
+  // Validate server input
+  const validServers = ["na", "eu", "ms"];
+  if (!validServers.includes(server)) {
+    throw new Error("Server không hợp lệ. Chọn 'na', 'eu' hoặc 'ms'");
   }
-  if (server === "eu") {
-    pool = await connectToDB(dbEUConfig);
+
+  // Connect to appropriate database
+  switch (server) {
+    case "na":
+      pool = await connectToDB(dbNAConfig);
+      break;
+    case "eu":
+      pool = await connectToDB(dbEUConfig);
+      break;
+    case "ms":
+      pool = await connectToDB(dbMSConfig);
+      break;
   }
-  if (server === "ms") {
-    pool = await connectToDB(dbMSConfig);
-  }
+
   try {
-    const query = `
-      DECLARE @StartTime DATETIME = GETDATE();
-      DECLARE @RequestID INT = @@SPID;
+    let query, result;
 
-      SELECT SUM(TotalDue) AS TotalSales
-      FROM Sales.SalesOrderHeader
-      ${year ? "WHERE YEAR(OrderDate) = @year" : ""};
+    if (year) {
+      // Query for specific year
+      query = `
+        DECLARE @StartTime DATETIME = GETDATE();
+        DECLARE @RequestID INT = @@SPID;
 
-      SELECT cpu_time, total_elapsed_time
-      FROM sys.dm_exec_requests
-      WHERE session_id = @RequestID;
-    `;
+        SELECT 
+          YEAR(OrderDate) AS Year,
+          SUM(TotalDue) AS TotalSales
+        FROM Sales.SalesOrderHeader
+        WHERE YEAR(OrderDate) = @year
+        GROUP BY YEAR(OrderDate);
 
-    const result = await pool
-      .request()
-      .input("year", sql.Int, year ? parseInt(year) : null)
-      .query(query);
+        SELECT cpu_time, total_elapsed_time
+        FROM sys.dm_exec_requests
+        WHERE session_id = @RequestID;
+      `;
+
+      result = await pool
+        .request()
+        .input("year", sql.Int, parseInt(year))
+        .query(query);
+    } else {
+      // Query for all years
+      query = `
+        DECLARE @StartTime DATETIME = GETDATE();
+        DECLARE @RequestID INT = @@SPID;
+
+        SELECT 
+          YEAR(OrderDate) AS Year,
+          SUM(TotalDue) AS TotalSales
+        FROM Sales.SalesOrderHeader
+        GROUP BY YEAR(OrderDate)
+        ORDER BY YEAR(OrderDate);
+
+        SELECT cpu_time, total_elapsed_time
+        FROM sys.dm_exec_requests
+        WHERE session_id = @RequestID;
+      `;
+
+      result = await pool.request().query(query);
+    }
 
     return {
-      Year: year,
-      TotalSales: result.recordset[0]?.TotalSales || 0,
-      CPUTime: result.recordsets[1][0]?.cpu_time || "N/A",
-      ElapsedTime: result.recordsets[1][0]?.total_elapsed_time || "N/A",
+      Data: result.recordset,
+      CPUTime: result.recordsets[1][0]?.cpu_time || 0,
+      ElapsedTime: result.recordsets[1][0]?.total_elapsed_time || 0,
     };
   } catch (error) {
-    console.error("Lỗi truy vấn dữ liệu:", error);
-    throw new Error("Lỗi truy vấn dữ liệu");
+    console.error("Lỗi truy vấn dữ liệu:", {
+      message: error.message,
+      stack: error.stack,
+    });
+
+    throw {
+      name: "DatabaseError",
+      message: "Không thể lấy dữ liệu doanh thu",
+      details: error.message,
+      year: year || "all",
+    };
   } finally {
-    await sql.close();
+    if (pool) {
+      try {
+        await pool.close();
+      } catch (closeError) {
+        console.error("Lỗi đóng kết nối:", closeError.message);
+      }
+    }
   }
 }
 
