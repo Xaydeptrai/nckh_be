@@ -77,7 +77,7 @@ async function totalSalesBySubcategory(
     const query = `
 
           DECLARE @StartTime DATETIME = GETDATE();
-      DECLARE @RequestID INT = @@SPID;
+          DECLARE @RequestID INT = @@SPID;
 
             DECLARE @totalSales DECIMAL(18,2);
             
